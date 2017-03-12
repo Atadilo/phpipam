@@ -41,6 +41,7 @@ $User->check_user_session();
     foreach ($subnets as &$s) {
         $s = (array) $s;
         if ($s['subnet'] > 0) {
+            $s['todisplay'] = $Subnets->transform_to_dotted($s['subnet']);
             $ips = $Addresses->fetch_subnet_addresses($s['id']);
             foreach ($ips as $ip) {
                 $ip = (array)$ip;
@@ -119,7 +120,7 @@ $User->check_user_session();
 	
 	function createSubnetNode(subnet) {
 
-		label = long2ip(subnet['subnet']) + "/" + subnet['mask'];
+		label = subnet['todisplay'] + "/" + subnet['mask'];
 		
 		desc = "<u>Subnet :</u> <br>";
 		if ( subnet['description'] != null ) {
@@ -131,18 +132,8 @@ $User->check_user_session();
         	'id': 's' + subnet['id'], 
     		'label' : label,
     		'title' : desc,
-    		//'shape': 'icon',
     		'group': 'id' + subnet['sectionId'], 
-    		//'icon': {
-        	//	'code': "\uf0e8",
-        	//	'color': null
-    		//},
         }
-	}
-
-	function long2ip (ip) {
-		 return [ip >>> 24, ip >>> 16 & 0xFF, ip >>> 8 & 0xFF, ip & 0xFF].join('.');
-			
 	}
 	
     // Called when the Visualization API is loaded.
@@ -155,9 +146,11 @@ $User->check_user_session();
         // Create a data table with links.
         edges = [];
 
-        devices.forEach ( function (d) {            
-         	nodes.push(createDeviceNode(d));
-        });
+        if (devices != null && devices.length > 0){
+            devices.forEach ( function (d) {            
+             	nodes.push(createDeviceNode(d));
+            });
+        }
 
         subnets.forEach ( function (s) {
             if (s['subnet'] > 0 ) {
@@ -195,7 +188,12 @@ $User->check_user_session();
     }
 </script>
 
-<div id="mynetwork"></div>
+<div id="mynetwork">
+	<blockquote style='margin-top:20px;margin-left:20px;'>
+	<p>No subnets configured</p>
+	<small>Add some subnets and devices to show typology.</small>
+	</blockquote>
+</div>
 
 
 <script type="text/javascript">
