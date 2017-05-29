@@ -265,11 +265,11 @@ DROP TABLE IF EXISTS `devices`;
 
 CREATE TABLE `devices` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `hostname` varchar(32) DEFAULT NULL,
+  `hostname` varchar(100) DEFAULT NULL,
   `ip_addr` varchar(100) DEFAULT NULL,
   `type` int(2) DEFAULT '0',
   `description` varchar(256) DEFAULT NULL,
-  `sections` varchar(128) DEFAULT NULL,
+  `sections` varchar(1024) DEFAULT NULL,
   `snmp_community` varchar(100) DEFAULT NULL,
   `snmp_version` set('0','1','2') DEFAULT '0',
   `snmp_port` mediumint(5) unsigned DEFAULT '161',
@@ -365,7 +365,9 @@ VALUES
 	(6, 'pt_BR.UTF-8', 'Brazil'),
 	(7,	'es_ES.UTF-8', 'Español'),
 	(8, 'cs_CZ.UTF-8', 'Czech'),
-	(9, 'en_US.UTF-8', 'English (US)');
+	(9, 'en_US.UTF-8', 'English (US)'),
+  (10,'ru_RU.UTF-8', 'Russian'),
+  (11,'zh_CN.UTF-8', 'Chinese');
 
 
 # Dump of table vlans
@@ -452,6 +454,8 @@ CREATE TABLE `api` (
   `app_security` SET('crypt','ssl','user','none')  NOT NULL  DEFAULT 'ssl',
   `app_lock` INT(1)  NOT NULL  DEFAULT '0',
   `app_lock_wait` INT(4)  NOT NULL  DEFAULT '30',
+  `app_nest_custom_fields` TINYINT(1)  NULL  DEFAULT '0',
+  `app_show_links` TINYINT(1)  NULL  DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `app_id` (`app_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -471,7 +475,8 @@ CREATE TABLE `changelog` (
   `cdate` datetime NOT NULL,
   `cdiff` varchar(2048) DEFAULT NULL,
   PRIMARY KEY (`cid`),
-  KEY `coid` (`coid`)
+  KEY `coid` (`coid`),
+  KEY `ctype` (`ctype`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
@@ -667,7 +672,7 @@ CREATE TABLE `scanAgents` (
 /* insert default values */
 INSERT INTO `scanAgents` (`id`, `name`, `description`, `type`)
 VALUES
-	(1, 'locahost', 'Scanning from local machine', 'direct');
+	(1, 'localhost', 'Scanning from local machine', 'direct');
 
 
 # Dump of table nat
@@ -763,4 +768,4 @@ CREATE TABLE `pstnNumbers` (
 
 # update version
 # ------------------------------------------------------------
-UPDATE `settings` set `version` = '1.29';
+UPDATE `settings` set `version` = '1.3';

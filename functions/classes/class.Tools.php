@@ -1370,6 +1370,131 @@ class Tools extends Common_functions {
 		return true;
 	}
 
+	/**
+	 * Verify that all required indexes are present in database
+	 *
+	 * @method verify_database_indexes
+	 * @return [type]                  [description]
+	 */
+	public function verify_database_indexes () {
+		// get indexes from schema
+		$schema_indexes = $this->get_schema_indexes();
+		// get existing indexes
+		$missing = $this->get_missing_database_indexes($schema_indexes);
+
+		// if false all indexes are ok, otherwise fix
+		if ($missing===false) {
+			return true;
+		}
+		else {
+			foreach ($missing as $table=>$index_id) {
+				foreach ($index_id as $index_name) {
+					$this->fix_missing_index ($table, $index_name);
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get all indexes required for phpipam
+	 *
+	 * ignoring primary keys
+	 *
+	 * @method get_schema_indexes
+	 * @return array
+	 */
+	private function get_schema_indexes () {
+		// indexes required for phpipam
+		$indexes = array ();
+		$indexes['ipaddresses']   = array ("sid_ip_unique", "subnetid");
+		$indexes['sections']      = array ("id_2");
+		$indexes['devices']       = array ("hostname");
+		$indexes['users']         = array ("id_2");
+		$indexes['api']           = array ("app_id");
+		$indexes['changelog']     = array ("coid", "ctype");
+		$indexes['loginAttempts'] = array ("ip");
+		$indexes['scanAgents']    = array ("code");
+		// return
+		return $indexes;
+	}
+
+	/**
+	 * Using required database indexes remove all that are existing and return array of missing indexes
+	 *
+	 * @method get_missing_database_indexes
+	 * @param array $schema_indexes
+	 * @return array|null
+	 */
+	private function get_missing_database_indexes ($schema_indexes) {
+		// loop
+		foreach ($schema_indexes as $table=>$index) {
+			try { $indexes = $this->Database->getObjectsQuery("SHOW INDEX from `$table` where `Key_name` != 'PRIMARY';"); }
+			catch (Exception $e) {
+				$this->Result->show("danger", _("Invalid query for `$table` database index check : ").$e->getMessage(), true);
+			}
+			// remove existing
+			if ($indexes!==false) {
+				foreach ($indexes as $i) {
+					// remove indexes
+					if(($key = array_search($i->Key_name, $schema_indexes[$table])) !== false) {
+						unset($schema_indexes[$table][$key]);
+					}
+				}
+			}
+			// remove also empty table
+			if(sizeof($schema_indexes[$table])==0) {
+				unset($schema_indexes[$table]);
+			}
+		}
+		// return diff
+		return sizeof($schema_indexes)==0 ? false : $schema_indexes;
+	}
+
+	/**
+	 * Fix missing indexes
+	 *
+	 * @method fix_missing_index
+	 * @param  string $table
+	 * @param  string $index_name
+	 * @return void
+	 */
+	private function fix_missing_index ($table, $index_name) {
+		// get definition
+		$res = fopen(dirname(__FILE__) . "/../../db/SCHEMA.sql", "r");
+		$file = fread($res, 100000);
+		$file = str_replace("\r\n", "\n", $file);
+
+		//go from delimiter on
+		$file = strstr($file, "DROP TABLE IF EXISTS `$table`;");
+		$file = trim(strstr($file, "# Dump of table", true));
+
+		//get proper line
+		$file = explode("\n", $file);
+
+		$line = false;
+		foreach($file as $k=>$l) {
+			// trim
+			$l = trim($l);
+			if(strpos($l, "KEY `".$index_name."`")!==false) {
+				// remove last ,
+				if(substr($l, -1)==",") {
+					$l = substr($l, 0, -1);
+				}
+				// set query and run
+				$query = "ALTER TABLE `$table` ADD ".$l;
+
+				try { $this->Database->runQuery($query); }
+				catch (Exception $e) {
+					$this->Result->show("danger", _("Creating index failed: ").$e->getMessage()."<br><pre>".$query."</pre>", true);
+					return false;
+				}
+				// add warning that index was created
+				$this->Result->show("warning", _("Created index for table `$table` named `$index_name`."), false);
+			}
+		}
+	}
+
 
 
 
@@ -2747,10 +2872,10 @@ class Tools extends Common_functions {
 
     			$outFile[$m]  = $data->val($m,'A').$this->csv_delimiter.$data->val($m,'B').$this->csv_delimiter.$data->val($m,'C').$this->csv_delimiter.$data->val($m,'D').$this->csv_delimiter;
     			$outFile[$m] .= $data->val($m,'E').$this->csv_delimiter.$mac.$this->csv_delimiter.$data->val($m,'G').$this->csv_delimiter.$data->val($m,'H').$this->csv_delimiter;
-    			$outFile[$m] .= $data->val($m,'I').$this->csv_delimiter.$data->val($m,'J');
+    			$outFile[$m] .= $data->val($m,'I').$this->csv_delimiter.$data->val($m,'J').$this->csv_delimiter.$data->val($m,'K');
     			//add custom fields
     			if(sizeof($custom_address_fields) > 0) {
-    				$currLett = "K";
+    				$currLett = "L";
     				foreach($custom_address_fields as $field) {
     					$outFile[$m] .= $this->csv_delimiter.$data->val($m,$currLett++);
     				}
@@ -2768,15 +2893,18 @@ class Tools extends Common_functions {
 	 * @return array
 	 */
 	private function parse_import_file_csv () {
-    	/* get file to string */
-    	$outFile = file_get_contents(dirname(__FILE__) . '/../../app/subnets/import-subnet/upload/import.csv') or die ($this->Result->show("danger", _('Cannot open upload/import.csv'), true));
+    	// get file to string
+		$handle = fopen(dirname(__FILE__) . '/../../app/subnets/import-subnet/upload/import.csv', "r");
+		if ($handle) {
+		    while (($outFile[] = fgets($handle)) !== false) {}
+		    fclose($handle);
+		} else {
+		    $this->Result->show("danger", _('Cannot open upload/import.csv'), true);
+		}
 
     	// delimiter
-    	$this->set_csv_delimiter ($outFile);
-
-    	/* format file */
-    	$outFile = str_replace( array("\r\n","\r") , "\n" , $outFile);	//replace windows and Mac line break
-    	$outFile = explode("\n", $outFile);
+    	if(isset($outFile[0]))
+    	$this->set_csv_delimiter ($outFile[0]);
 
     	/* validate IP */
     	foreach($outFile as $k=>$v) {

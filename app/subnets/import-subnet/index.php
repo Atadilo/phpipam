@@ -52,16 +52,22 @@ $custom_address_fields = $Tools->fetch_custom_fields('ipaddresses');
 		# remove last |
 		$custFields = substr($custFields, 0,-2);
 	}
+
+	# set standard fields
+	$standard_fields = array ("ip address","ip state","description","hostname","fw_object","mac","owner","device","port","notes", "location");
 	?>
 
 	<!-- notes -->
-	<?php print _('To successfully import data please use the following XLS/CSV structure:<br>( ip | State | Description | hostname | MAC | Owner | Device | Port | Note '); ?> <?php print $custFields; ?> )
-	<br>
-	<img src="css/<?php print SCRIPT_PREFIX; ?>/images/csvuploadexample.jpg" style="border:1px solid #999999">
-	<br><br>
+	<?php print _('To successfully import data please use the following XLS/CSV structure:'); ?><br>
+	<div class="alert alert-info alert-absolute">
+ 	<?php print implode(" | ", $standard_fields).$custFields; ?>
+	</div>
+	<div class="clearfix"></div>
 
 	<!-- Download template -->
-	<a class="csvtemplate btn btn-sm btn-default pull-right" id="csvtemplate">Download template</a>
+	<a class="csvtemplate btn btn-sm btn-default" id="csvtemplate">Download template</a>
+
+	<br><br>
 
 	<!-- Upload file form -->
 	<h4>1.) <?php print _('Upload file'); ?>:</h4>
@@ -143,9 +149,17 @@ $custom_address_fields = $Tools->fetch_custom_fields('ipaddresses');
 	        },
 	        success:function(e, data){
 	            // All good, check for response!
-				var resp = jQuery.parseJSON(e);
-				//get status
-				var respStat = resp['status'];
+	            try {
+	                var resp = jQuery.parseJSON(e);
+	            } catch (e) {
+	                // error
+	            	$('ul.progressUl li.alert').addClass('alert alert-danger');		//add error class
+	            	$('li.alert p').append("<br><strong>Error: Error parsing json response</strong>");
+
+	                return;
+	            }
+	            //get status
+	            var respStat = resp['status'];
 	            //success
 	            if(respStat == "success") {
 	            	$('ul.progressUl li.alert').addClass('alert-success');		//add success class
