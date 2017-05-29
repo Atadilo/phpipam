@@ -35,7 +35,7 @@ $User->check_user_session();
 	var sections = [];
     var devices = [];
     var subnets = [];
-    
+
     <?php
     # Complete subnets array with list of connected Divices
     foreach ($subnets as &$s) {
@@ -54,13 +54,13 @@ $User->check_user_session();
             }
         }
     }
-    
+
     # write as json
     print "sections = " . json_encode($sections) . ";" . PHP_EOL;
     print "devices = " . json_encode($devices) . ";" . PHP_EOL;
     print "subnets = " . json_encode($subnets) . ";" . PHP_EOL;
     ?>
-    
+
     //console.log("devices", devices);
     //console.log("subnets", subnets);
 
@@ -97,7 +97,7 @@ $User->check_user_session();
       ];
     // prepare options.groups of Vis Network
     var index = 0;
-    sections.forEach ( function (section) {            
+    sections.forEach ( function (section) {
     	sectionsGroups['id' + section['id']] = {
                 shape: 'icon',
                 color: defaultGroups[index % 20],
@@ -108,34 +108,45 @@ $User->check_user_session();
               };
     	index +=1;
     });
-    
+
 	function createDeviceNode(device) {
-				
+
         return {
-        	'id': 'd' + device['id'], 
+        	'id': 'd' + device['id'],
     		'label' : device['hostname'],
     		'shape': 'box',
         }
 	}
-	
+
 	function createSubnetNode(subnet) {
 
 		label = subnet['todisplay'] + "/" + subnet['mask'];
-		
+
 		desc = "<u>Subnet :</u> <br>";
 		if ( subnet['description'] != null ) {
-			desc += "<li>" + subnet['description'] + "<br>";				
+			desc += "<li>" + subnet['description'] + "<br>";
 		}
 		desc += "<li>" + label;
-		
+
         return {
-        	'id': 's' + subnet['id'], 
+        	'id': 's' + subnet['id'],
     		'label' : label,
     		'title' : desc,
-    		'group': 'id' + subnet['sectionId'], 
+    		'group': 'id' + subnet['sectionId'],
         }
 	}
-	
+    
+    function long2ip (ip) {
+      //  discuss at: http://locutus.io/php/long2ip/
+      // original by: Waldo Malqui Silva (http://waldo.malqui.info)
+      //   example 1: long2ip( 3221234342 )
+      //   returns 1: '192.0.34.166'
+      if (!isFinite(ip)) {
+        return false
+      }
+      return [ip >>> 24, ip >>> 16 & 0xFF, ip >>> 8 & 0xFF, ip & 0xFF].join('.')
+    }
+
     // Called when the Visualization API is loaded.
     function draw() {
 
@@ -147,7 +158,7 @@ $User->check_user_session();
         edges = [];
 
         if (devices != null && devices.length > 0){
-            devices.forEach ( function (d) {            
+            devices.forEach ( function (d) {
              	nodes.push(createDeviceNode(d));
             });
         }
@@ -160,16 +171,16 @@ $User->check_user_session();
              	if ( 'switch' in s) {
              		s['switch'].forEach( function (ip) {
                  		var e = {
-                         		'from': 's' + s['id'], 
-                         		'to': 'd' + ip['id'], 
+                         		'from': 's' + s['id'],
+                         		'to': 'd' + ip['id'],
                          		'label': long2ip(ip['ip_addr'])
                  		};
-                 	
+
                  		edges.push(e);
              	});
             }
         }});
-        
+
         // create a network
         var container = document.getElementById('mynetwork');
         var data = {
@@ -181,7 +192,7 @@ $User->check_user_session();
                  "barnesHut": {
                       "gravitationalConstant": -5000
                  }
-            },            
+            },
             groups: sectionsGroups
         }
         network = new vis.Network(container, data, options);
